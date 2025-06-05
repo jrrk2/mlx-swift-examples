@@ -9,6 +9,7 @@ import MarkdownUI
 import Metal
 import SwiftUI
 import Tokenizers
+import Hub
 
 struct ContentView: View {
     @Environment(DeviceStat.self) private var deviceStat
@@ -34,10 +35,6 @@ struct ContentView: View {
                     Text(llm.stat)
                 }
                 HStack {
-                    Toggle(isOn: $llm.includeWeatherTool) {
-                        Text("Include \"get current weather\" tool")
-                    }
-                    .frame(maxWidth: 350, alignment: .leading)
                     Toggle(isOn: $llm.enableThinking) {
                         Text("Thinking")
                             .help(
@@ -113,9 +110,9 @@ struct ContentView: View {
                 .help(
                     Text(
                         """
-                        Active Memory: \(deviceStat.gpuUsage.activeMemory.formatted(.byteCount(style: .memory)))/\(GPU.memoryLimit.formatted(.byteCount(style: .memory)))
-                        Cache Memory: \(deviceStat.gpuUsage.cacheMemory.formatted(.byteCount(style: .memory)))/\(GPU.cacheLimit.formatted(.byteCount(style: .memory)))
-                        Peak Memory: \(deviceStat.gpuUsage.peakMemory.formatted(.byteCount(style: .memory)))
+                        Active Memory: 
+                        Cache Memory: 
+                        Peak Memory:
                         """
                     )
                 )
@@ -176,7 +173,7 @@ class LLMEvaluator {
     let modelConfiguration = LLMRegistry.qwen3_1_7b_4bit
 
     /// parameters controlling the output
-    let generateParameters = GenerateParameters(maxTokens: 240, temperature: 0.6)
+    let generateParameters = GenerateParameters(maxTokens: 8192, temperature: 0.6)
     let updateInterval = Duration.seconds(0.25)
 
     /// A task responsible for handling the generation process.
@@ -212,30 +209,82 @@ class LLMEvaluator {
             ] as [String: any Sendable],
         ] as [String: any Sendable]
 
-    /// load and return the model -- can be called multiple times, subsequent calls will
-    /// just return the loaded model
+    // Add this function to your ContentView.swift or wherever your load() function is located
+
+    func setupBundledModel() throws -> URL {
+        // Create destination directory
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let modelDir = documentsDir
+            .appendingPathComponent("Models")
+            .appendingPathComponent("Llama-3.2-1B-Instruct-4bit")
+        
+        if FileManager.default.fileExists(atPath: modelDir.path) {
+            print("Model already exists at: \(modelDir.path)")
+            return modelDir
+        }
+        
+        // Create the model directory
+        try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
+        
+        // Copy the flattened files from bundle
+        let filesToCopy = [
+            "model.safetensors",
+            "model.safetensors.index.json",
+            "config.json",
+            "tokenizer_config.json",
+            "special_tokens_map.json",
+            "tokenizer.json"
+        ]
+        
+        for filename in filesToCopy {
+            guard let bundleFile = Bundle.main.url(forResource: filename, withExtension: nil) else {
+                print("⚠️ Warning: \(filename) not found in bundle")
+                continue
+            }
+            
+            let destinationFile = modelDir.appendingPathComponent(filename)
+            
+            // Remove if exists (in case of re-copying)
+            if FileManager.default.fileExists(atPath: destinationFile.path) {
+                try FileManager.default.removeItem(at: destinationFile)
+            }
+            
+            try FileManager.default.copyItem(at: bundleFile, to: destinationFile)
+            print("✅ Copied \(filename)")
+        }
+        
+        print("🎉 Successfully set up bundled model at: \(modelDir.path)")
+        return modelDir
+    }
+    
+    // Then update your existing load() function to use it:
     func load() async throws -> ModelContainer {
         switch loadState {
         case .idle:
-            // limit the buffer cache
-            MLX.GPU.set(cacheLimit: 20 * 1024 * 1024)
-
+            // Set up bundled model
+            let modelDir = try setupBundledModel()
+            
+            // Use ModelConfiguration(directory:) to point directly to the model
+            let bundledModelConfig = ModelConfiguration(
+                directory: modelDir,
+                overrideTokenizer: "PreTrainedTokenizer",
+                defaultPrompt: "What is the gravity on Mars and the moon?"
+            )
+            
             let modelContainer = try await LLMModelFactory.shared.loadContainer(
-                configuration: modelConfiguration
-            ) {
-                [modelConfiguration] progress in
+                configuration: bundledModelConfig
+            ) { progress in
                 Task { @MainActor in
-                    self.modelInfo =
-                        "Downloading \(modelConfiguration.name): \(Int(progress.fractionCompleted * 100))%"
+                    self.modelInfo = "Loading bundled model: \(Int(progress.fractionCompleted * 100))%"
                 }
             }
+            
             let numParams = await modelContainer.perform { context in
                 context.model.numParameters()
             }
 
-            self.prompt = modelConfiguration.defaultPrompt
-            self.modelInfo =
-                "Loaded \(modelConfiguration.id).  Weights: \(numParams / (1024*1024))M"
+            self.prompt = bundledModelConfig.defaultPrompt
+            self.modelInfo = "Loaded bundled model offline"
             loadState = .loaded(modelContainer)
             return modelContainer
 
@@ -278,7 +327,7 @@ class LLMEvaluator {
 
                     if let completion = batch.compactMap({ $0.info }).first {
                         Task { @MainActor in
-                            self.stat = "\(completion.tokensPerSecond) tokens/s"
+                            self.stat = String(format: "%.1f tokens/s", completion.tokensPerSecond)
                         }
                     }
                 }

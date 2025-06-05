@@ -24,7 +24,6 @@ let imageSystemPrompt =
 struct ContentView: View {
 
     @State var llm = VLMEvaluator()
-    @Environment(DeviceStat.self) private var deviceStat
 
     @State private var selectedImage: PlatformImage? = nil {
         didSet {
@@ -223,7 +222,7 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem {
                 Label(
-                    "Memory Usage: \(deviceStat.gpuUsage.activeMemory.formatted(.byteCount(style: .memory)))",
+                    "Memory Usage: ",
                     systemImage: "info.circle.fill"
                 )
                 .labelStyle(.titleAndIcon)
@@ -231,9 +230,9 @@ struct ContentView: View {
                 .help(
                     Text(
                         """
-                        Active Memory: \(deviceStat.gpuUsage.activeMemory.formatted(.byteCount(style: .memory)))/\(GPU.memoryLimit.formatted(.byteCount(style: .memory)))
-                        Cache Memory: \(deviceStat.gpuUsage.cacheMemory.formatted(.byteCount(style: .memory)))/\(GPU.cacheLimit.formatted(.byteCount(style: .memory)))
-                        Peak Memory: \(deviceStat.gpuUsage.peakMemory.formatted(.byteCount(style: .memory)))
+                        Active Memory: 
+                        Cache Memory: 
+                        Peak Memory: 
                         """
                     )
                 )
