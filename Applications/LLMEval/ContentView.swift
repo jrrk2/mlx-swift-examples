@@ -21,8 +21,6 @@ struct ContentView: View {
         var id: Self { self }
     }
 
-    @State private var selectedDisplayStyle = displayStyle.markdown
-
     var body: some View {
         VStack(alignment: .leading) {
             VStack {
@@ -35,30 +33,11 @@ struct ContentView: View {
                     Text(llm.stat)
                 }
                 HStack {
-                    Toggle(isOn: $llm.enableThinking) {
-                        Text("Thinking")
-                            .help(
-                                "Switches between thinking and non-thinking modes. Support: Qwen3")
-                    }
-                    Spacer()
                     if llm.running {
                         ProgressView()
                             .frame(maxHeight: 20)
                         Spacer()
                     }
-                    Picker("", selection: $selectedDisplayStyle) {
-                        ForEach(displayStyle.allCases, id: \.self) { option in
-                            Text(option.rawValue.capitalized)
-                                .tag(option)
-                        }
-
-                    }
-                    .pickerStyle(.segmented)
-                    #if os(visionOS)
-                        .frame(maxWidth: 250)
-                    #else
-                        .frame(maxWidth: 150)
-                    #endif
                 }
             }
 
@@ -66,13 +45,8 @@ struct ContentView: View {
             ScrollView(.vertical) {
                 ScrollViewReader { sp in
                     Group {
-                        if selectedDisplayStyle == .plain {
-                            Text(llm.output)
+                             Markdown(llm.output)
                                 .textSelection(.enabled)
-                        } else {
-                            Markdown(llm.output)
-                                .textSelection(.enabled)
-                        }
                     }
                     .onChange(of: llm.output) { _, _ in
                         sp.scrollTo("bottom")
@@ -160,9 +134,6 @@ class LLMEvaluator {
 
     var running = false
 
-    var includeWeatherTool = false
-    var enableThinking = false
-
     var prompt = ""
     var output = ""
     var modelInfo = ""
@@ -173,7 +144,13 @@ class LLMEvaluator {
     let modelConfiguration = LLMRegistry.qwen3_1_7b_4bit
 
     /// parameters controlling the output
-    let generateParameters = GenerateParameters(maxTokens: 8192, temperature: 0.6)
+    let generateParameters = GenerateParameters(
+        maxTokens: 8192,                   // Add this as a safety net
+        temperature: 0.7,
+        topP: 1.0,
+        repetitionPenalty: 1.1,          // Add this
+        repetitionContextSize: 20        // Add this
+     )
     let updateInterval = Duration.seconds(0.25)
 
     /// A task responsible for handling the generation process.
@@ -186,29 +163,6 @@ class LLMEvaluator {
 
     var loadState = LoadState.idle
 
-    let currentWeatherToolSpec: [String: any Sendable] =
-        [
-            "type": "function",
-            "function": [
-                "name": "get_current_weather",
-                "description": "Get the current weather in a given location",
-                "parameters": [
-                    "type": "object",
-                    "properties": [
-                        "location": [
-                            "type": "string",
-                            "description": "The city and state, e.g. San Francisco, CA",
-                        ] as [String: String],
-                        "unit": [
-                            "type": "string",
-                            "enum": ["celsius", "fahrenheit"],
-                        ] as [String: any Sendable],
-                    ] as [String: [String: any Sendable]],
-                    "required": ["location"],
-                ] as [String: any Sendable],
-            ] as [String: any Sendable],
-        ] as [String: any Sendable]
-
     // Add this function to your ContentView.swift or wherever your load() function is located
 
     func setupBundledModel() throws -> URL {
@@ -216,7 +170,7 @@ class LLMEvaluator {
         let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let modelDir = documentsDir
             .appendingPathComponent("Models")
-            .appendingPathComponent("Llama-3.2-1B-Instruct-4bit")
+            .appendingPathComponent("Phi-3.5-mini-instruct-mlx-4bit")
         
         if FileManager.default.fileExists(atPath: modelDir.path) {
             print("Model already exists at: \(modelDir.path)")
@@ -228,12 +182,20 @@ class LLMEvaluator {
         
         // Copy the flattened files from bundle
         let filesToCopy = [
+            "added_tokens.json",
+            "chat_template.jinja",
+            "config.json",
+            "configuration_phi3.py",
+            "generation_config.json",
             "model.safetensors",
             "model.safetensors.index.json",
-            "config.json",
-            "tokenizer_config.json",
+            "modeling_phi3.py",
+            "README.md",
+            "sample_finetune.py",
             "special_tokens_map.json",
-            "tokenizer.json"
+            "tokenizer_config.json",
+            "tokenizer.json",
+            "tokenizer.model",
         ]
         
         for filename in filesToCopy {
@@ -267,8 +229,8 @@ class LLMEvaluator {
             // Use ModelConfiguration(directory:) to point directly to the model
             let bundledModelConfig = ModelConfiguration(
                 directory: modelDir,
-                overrideTokenizer: "PreTrainedTokenizer",
-                defaultPrompt: "What is the gravity on Mars and the moon?"
+//                 overrideTokenizer: "PreTrainedTokenizer",
+                defaultPrompt: "History of Hong Kong"
             )
             
             let modelContainer = try await LLMModelFactory.shared.loadContainer(
@@ -297,11 +259,10 @@ class LLMEvaluator {
 
         self.output = ""
         let chat: [Chat.Message] = [
-            .system("You are a helpful assistant"),
+            .system("You are an age appropriate assistant for 8-9 year olds"),
             .user(prompt),
         ]
-        let userInput = UserInput(
-            chat: chat, additionalContext: ["enable_thinking": enableThinking])
+        let userInput = UserInput(chat: chat)
 
         do {
             let modelContainer = try await load()

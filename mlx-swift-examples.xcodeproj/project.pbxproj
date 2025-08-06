@@ -17,7 +17,6 @@
 		12305EAF2B9D864400C92FEE /* PredictionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12305EAE2B9D864400C92FEE /* PredictionView.swift */; };
 		81695B412BA373D300F260D8 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 81695B402BA373D300F260D8 /* MarkdownUI */; };
 		AB81A7632DF0612100B0DF80 /* DeviceStat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB81A7622DF0612100B0DF80 /* DeviceStat.swift */; };
-		AB81A7A12DF16A1500B0DF80 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AB81A7A02DF16A1500B0DF80 /* LaunchScreen.storyboard */; };
 		AB81A8F42DF197DE00B0DF80 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB81A8F32DF197DE00B0DF80 /* Assets.xcassets */; };
 		C3056BAE2BCD97B700A31D04 /* LoRATrainingExampleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3056BAD2BCD97B700A31D04 /* LoRATrainingExampleApp.swift */; };
 		C3056BB02BCD97B700A31D04 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3056BAF2BCD97B700A31D04 /* ContentView.swift */; };
@@ -202,7 +201,6 @@
 		0F5AD7412DB70C0300745C06 /* MLXChatExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MLXChatExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		12305EAE2B9D864400C92FEE /* PredictionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PredictionView.swift; sourceTree = "<group>"; };
 		AB81A7622DF0612100B0DF80 /* DeviceStat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStat.swift; sourceTree = "<group>"; };
-		AB81A7A02DF16A1500B0DF80 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		AB81A8F32DF197DE00B0DF80 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C3056BA12BCD973400A31D04 /* test.jsonl */ = {isa = PBXFileReference; lastKnownFileType = text; path = test.jsonl; sourceTree = "<group>"; };
 		C3056BA22BCD973400A31D04 /* train.jsonl */ = {isa = PBXFileReference; lastKnownFileType = text; path = train.jsonl; sourceTree = "<group>"; };
@@ -631,7 +629,6 @@
 		C3A8B3EB2B92A2A90002EFB8 /* LLMEval */ = {
 			isa = PBXGroup;
 			children = (
-				AB81A7A02DF16A1500B0DF80 /* LaunchScreen.storyboard */,
 				819BEFF72BAF8B4E0002CCEE /* ViewModels */,
 				C3A8B3F22B92A2A90002EFB8 /* ContentView.swift */,
 				C3A8B3ED2B92A2A90002EFB8 /* LLMEvalApp.swift */,
@@ -1064,7 +1061,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB81A8F42DF197DE00B0DF80 /* Assets.xcassets in Resources */,
-				AB81A7A12DF16A1500B0DF80 /* LaunchScreen.storyboard in Resources */,
 				C3A8B3F52B92A2A90002EFB8 /* Preview Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
