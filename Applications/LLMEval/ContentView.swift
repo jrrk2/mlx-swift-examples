@@ -103,6 +103,9 @@ struct ContentView: View {
                 .disabled(llm.output == "")
                 .labelStyle(.titleAndIcon)
             }
+            
+            // Teacher logs toolbar item - FIXED for cross-platform
+            #if os(iOS)
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     teacherAuth.requestAccess()
@@ -111,9 +114,19 @@ struct ContentView: View {
                 }
                 .help("Access student interaction logs (teacher only)")
             }
+            #else
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    teacherAuth.requestAccess()
+                } label: {
+                    Label("Teacher Logs", systemImage: "person.badge.key")
+                }
+                .help("Access student interaction logs (teacher only)")
+            }
+            #endif
 
         }
-        // Add these sheet modifiers at the end of your body:
+        // Sheet modifiers for teacher authentication
         .sheet(isPresented: $teacherAuth.showingPasswordPrompt) {
             TeacherPasswordView(authManager: teacherAuth)
         }
@@ -340,31 +353,31 @@ class LLMEvaluatorWithLogging {
             TeacherLogger.shared.logInteraction(
                 userPrompt: prompt,
                 modelResponse: errorMessage,
-                modelInfo: "Bundled Phi-3.5-mini (offline)", // ← Fixed
-		tokensPerSecond: 0.0,
-		promptTokens: 0,
-		responseTokens: 0,
+                modelInfo: "Bundled Phi-3.5-mini (offline)",
+                tokensPerSecond: 0.0,
+                promptTokens: 0,
+                responseTokens: 0,
                 processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
             )
         }
     }
     
     private func logCompleteInteraction(
-	prompt: String, 
-	response: String, 
-	completion: GenerateCompletionInfo
+        prompt: String, 
+        response: String, 
+        completion: GenerateCompletionInfo
     ) {
-	let processingTime = Date().timeIntervalSince(generationStartTime ?? Date())
+        let processingTime = Date().timeIntervalSince(generationStartTime ?? Date())
 
-	TeacherLogger.shared.logInteraction(
-	    userPrompt: prompt,
-	    modelResponse: response,
-	    modelInfo: "Bundled Phi-3.5-mini (offline)",
-	    tokensPerSecond: completion.tokensPerSecond,
-	    promptTokens: completion.promptTokenCount,
-	    responseTokens: completion.generationTokenCount,
-	    processingTime: processingTime
-	)
+        TeacherLogger.shared.logInteraction(
+            userPrompt: prompt,
+            modelResponse: response,
+            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            tokensPerSecond: completion.tokensPerSecond,
+            promptTokens: completion.promptTokenCount,
+            responseTokens: completion.generationTokenCount,
+            processingTime: processingTime
+        )
     }
     
     func generate() {
@@ -384,10 +397,10 @@ class LLMEvaluatorWithLogging {
             TeacherLogger.shared.logInteraction(
                 userPrompt: currentPrompt,
                 modelResponse: "[GENERATION CANCELLED]",
-                modelInfo: modelConfiguration.name,
-		tokensPerSecond: 0.0,
-		promptTokens: 0,
-		responseTokens: 0,
+                modelInfo: "Bundled Phi-3.5-mini (offline)",
+                tokensPerSecond: 0.0,
+                promptTokens: 0,
+                responseTokens: 0,
                 processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
             )
         }

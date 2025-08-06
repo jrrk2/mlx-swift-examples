@@ -1,11 +1,3 @@
-//
-//  TeacherAuthManager.swift
-//  mlx-swift-examples
-//
-//  Created by Jonathan Kimmitt on 06/08/2025.
-//
-
-
 import SwiftUI
 import CryptoKit
 
@@ -121,13 +113,23 @@ struct TeacherPasswordView: View {
                 }
             }
             .navigationTitle("Teacher Login")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }
@@ -140,7 +142,7 @@ struct TeacherPasswordView: View {
             showingError = true
             password = ""
             
-            // Add haptic feedback for failed attempt
+            // Add haptic feedback for failed attempt (iOS only)
             #if os(iOS)
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
@@ -233,8 +235,11 @@ struct AuthenticatedTeacherLogView: View {
                 }
             }
             .navigationTitle("Student Interactions (\(filteredEntries.count))")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button("Refresh", action: loadLogs)
                     
@@ -243,6 +248,16 @@ struct AuthenticatedTeacherLogView: View {
                     }
                     .foregroundColor(.red)
                 }
+                #else
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Refresh", action: loadLogs)
+                    
+                    Button("Logout") {
+                        authManager.logout()
+                    }
+                    .foregroundColor(.red)
+                }
+                #endif
             }
             .sheet(isPresented: $showingExportSheet) {
                 ExportLogView(entries: filteredEntries)
@@ -382,13 +397,23 @@ struct ExportLogView: View {
                 Spacer()
             }
             .navigationTitle("Export Logs")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }
@@ -458,8 +483,8 @@ struct ExportLogView: View {
             text += "Session: \(entry.sessionId)\n\n"
             text += "QUESTION: \(entry.userPrompt)\n\n"
             text += "RESPONSE: \(entry.modelResponse)\n\n"
-            text += "Stats: \(entry.generationStats.tokensPerSecond, specifier: "%.1f") tokens/sec, "
-            text += "\(entry.generationStats.processingTime, specifier: "%.2f")s processing\n\n"
+            text += "Stats: \(String(format: "%.1f", entry.generationStats.tokensPerSecond)) tokens/sec, "
+            text += "\(String(format: "%.2f", entry.generationStats.processingTime))s processing\n\n"
             text += "---\n\n"
         }
         
