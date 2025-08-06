@@ -171,12 +171,12 @@ class LLMEvaluator {
         let modelDir = documentsDir
             .appendingPathComponent("Models")
             .appendingPathComponent("Phi-3.5-mini-instruct-mlx-4bit")
-        
+ /*
         if FileManager.default.fileExists(atPath: modelDir.path) {
             print("Model already exists at: \(modelDir.path)")
             return modelDir
         }
-        
+   */
         // Create the model directory
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
         

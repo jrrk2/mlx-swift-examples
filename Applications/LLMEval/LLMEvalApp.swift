@@ -10,30 +10,12 @@ struct LLMEvalApp: App {
                 .environment(DeviceStat())
                 .onAppear {
                     debugBundleContents()
-                    debugModelPaths()
                 }
         }
     }
 }
 
 import Hub
-func debugModelPaths() {
-    let hub = HubApi()
-    
-    // Check different models
-    let models = [
-        "mlx-community/Llama-3.2-1B-instruct-mlx-16bit"
-    ]
-    
-    for modelId in models {
-        let repo = Hub.Repo(id: modelId)
-        let location = hub.localRepoLocation(repo)
-        print("Model: \(modelId)")
-        print("Expected location: \(location.path)")
-        print("Exists: \(FileManager.default.fileExists(atPath: location.path))")
-        print("---")
-    }
-}
 
 func debugBundleContents() {
     print("=== Bundle Debug ===")
