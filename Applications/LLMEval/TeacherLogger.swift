@@ -63,7 +63,8 @@ class TeacherLogger {
     }
     
     private func setupSecurePermissions() {
-        logQueue.async {
+        logQueue.async { [weak self] in
+            guard let self = self else { return }
             do {
                 // Ensure the file exists
                 if !FileManager.default.fileExists(atPath: self.logFileURL.path) {
@@ -78,7 +79,8 @@ class TeacherLogger {
                 // Hide from normal file browsing
                 var resourceValues = URLResourceValues()
                 resourceValues.isHidden = true
-                try self.logFileURL.setResourceValues(resourceValues)
+                var mutableURL = self.logFileURL
+                try mutableURL.setResourceValues(resourceValues)
                 
             } catch {
                 self.logger.error("Failed to set secure permissions: \(error.localizedDescription)")
@@ -121,11 +123,12 @@ class TeacherLogger {
     /// Start a new session (useful for multiple conversations)
     func startNewSession() {
         currentSessionId = UUID().uuidString
-        logger.info("Started new logging session: \(currentSessionId)")
+        logger.info("Started new logging session: \(self.currentSessionId)")
     }
     
     private func writeLogEntry(_ entry: LogEntry) {
-        logQueue.async {
+        logQueue.async { [weak self] in
+            guard let self = self else { return }
             do {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
@@ -183,13 +186,13 @@ class TeacherLogger {
     }
     
     /// Get log entries for a specific session
-    func getLogEntries(for sessionId: String) throws -> [LogEntry] {
+    func getLogEntriesForSession(_ sessionId: String) throws -> [LogEntry] {
         let allEntries = try getAllLogEntries()
         return allEntries.filter { $0.sessionId == sessionId }
     }
     
     /// Get log entries for a specific user
-    func getLogEntries(for userId: String) throws -> [LogEntry] {
+    func getLogEntriesForUser(_ userId: String) throws -> [LogEntry] {
         let allEntries = try getAllLogEntries()
         return allEntries.filter { $0.userId == userId }
     }
@@ -246,7 +249,9 @@ struct TeacherLogView: View {
                 }
             }
             .navigationTitle("Teacher Logs")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Refresh", action: loadLogs)

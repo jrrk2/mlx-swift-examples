@@ -14,7 +14,8 @@ import Hub
 struct ContentView: View {
     @Environment(DeviceStat.self) private var deviceStat
 
-    @State var llm = LLMEvaluator()
+    @State var llm = LLMEvaluatorWithLogging()
+    @StateObject private var teacherAuth = TeacherAuthManager()
 
     enum displayStyle: String, CaseIterable, Identifiable {
         case plain, markdown
@@ -102,7 +103,25 @@ struct ContentView: View {
                 .disabled(llm.output == "")
                 .labelStyle(.titleAndIcon)
             }
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    teacherAuth.requestAccess()
+                } label: {
+                    Label("Teacher Logs", systemImage: "person.badge.key")
+                }
+                .help("Access student interaction logs (teacher only)")
+            }
 
+        }
+        // Add these sheet modifiers at the end of your body:
+        .sheet(isPresented: $teacherAuth.showingPasswordPrompt) {
+            TeacherPasswordView(authManager: teacherAuth)
+        }
+        .sheet(isPresented: $teacherAuth.isAuthenticated) {
+            AuthenticatedTeacherLogView(authManager: teacherAuth)
+                .onDisappear {
+                    teacherAuth.logout()
+                }
         }
         .task {
             // pre-load the weights on launch to speed up the first generation
@@ -128,55 +147,60 @@ struct ContentView: View {
     }
 }
 
+
+// MARK: - Enhanced LLMEvaluator with Logging
+
 @Observable
 @MainActor
-class LLMEvaluator {
-
+class LLMEvaluatorWithLogging {
+    
     var running = false
-
     var prompt = ""
     var output = ""
     var modelInfo = ""
     var stat = ""
-
-    /// This controls which model loads. `qwen2_5_1_5b` is one of the smaller ones, so this will fit on
-    /// more devices.
+    
     let modelConfiguration = LLMRegistry.qwen3_1_7b_4bit
-
-    /// parameters controlling the output
     let generateParameters = GenerateParameters(
-        maxTokens: 8192,                   // Add this as a safety net
+        maxTokens: 8192,
         temperature: 0.7,
         topP: 1.0,
-        repetitionPenalty: 1.1,          // Add this
-        repetitionContextSize: 20        // Add this
-     )
+        repetitionPenalty: 1.1,
+        repetitionContextSize: 20
+    )
     let updateInterval = Duration.seconds(0.25)
-
-    /// A task responsible for handling the generation process.
+    
     var generationTask: Task<Void, Error>?
-
+    
+    // Logging-related properties
+    private var currentPrompt = ""
+    private var generationStartTime: Date?
+    private var finalStats: String = ""
+    
+    // Load state management
     enum LoadState {
         case idle
         case loaded(ModelContainer)
     }
-
     var loadState = LoadState.idle
-
-    // Add this function to your ContentView.swift or wherever your load() function is located
-
+    
+    init() {
+        // Initialize a new logging session when the evaluator starts
+        TeacherLogger.shared.startNewSession()
+    }
+    
     func setupBundledModel() throws -> URL {
         // Create destination directory
         let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let modelDir = documentsDir
             .appendingPathComponent("Models")
             .appendingPathComponent("Phi-3.5-mini-instruct-mlx-4bit")
- /*
+        
         if FileManager.default.fileExists(atPath: modelDir.path) {
             print("Model already exists at: \(modelDir.path)")
             return modelDir
         }
-   */
+        
         // Create the model directory
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
         
@@ -219,17 +243,15 @@ class LLMEvaluator {
         return modelDir
     }
     
-    // Then update your existing load() function to use it:
     func load() async throws -> ModelContainer {
         switch loadState {
         case .idle:
-            // Set up bundled model
+            // Set up bundled model first
             let modelDir = try setupBundledModel()
             
-            // Use ModelConfiguration(directory:) to point directly to the model
+            // Use ModelConfiguration(directory:) to point directly to the bundled model
             let bundledModelConfig = ModelConfiguration(
                 directory: modelDir,
-//                 overrideTokenizer: "PreTrainedTokenizer",
                 defaultPrompt: "History of Hong Kong"
             )
             
@@ -244,61 +266,107 @@ class LLMEvaluator {
             let numParams = await modelContainer.perform { context in
                 context.model.numParameters()
             }
-
+            
             self.prompt = bundledModelConfig.defaultPrompt
             self.modelInfo = "Loaded bundled model offline"
             loadState = .loaded(modelContainer)
             return modelContainer
-
+            
         case .loaded(let modelContainer):
             return modelContainer
         }
     }
-
+    
     private func generate(prompt: String) async {
-
-        self.output = ""
+        // Store the original prompt for logging
+        currentPrompt = prompt
+        generationStartTime = Date()
+        
+        // Clear previous output but store it for potential logging
+        let previousOutput = output
+        output = ""
+        
         let chat: [Chat.Message] = [
             .system("You are an age appropriate assistant for 8-9 year olds"),
             .user(prompt),
         ]
         let userInput = UserInput(chat: chat)
-
+        
         do {
             let modelContainer = try await load()
-
-            // each time you generate you will get something new
+            
             MLXRandom.seed(UInt64(Date.timeIntervalSinceReferenceDate * 1000))
-
+            
             try await modelContainer.perform { (context: ModelContext) -> Void in
                 let lmInput = try await context.processor.prepare(input: userInput)
                 let stream = try MLXLMCommon.generate(
                     input: lmInput, parameters: generateParameters, context: context)
-
-                // generate and output in batches
+                
+                var accumulatedOutput = ""
+                
                 for await batch in stream._throttle(
                     for: updateInterval, reducing: Generation.collect)
                 {
-                    let output = batch.compactMap { $0.chunk }.joined(separator: "")
-                    if !output.isEmpty {
-                        Task { @MainActor [output] in
-                            self.output += output
+                    let batchOutput = batch.compactMap { $0.chunk }.joined(separator: "")
+                    if !batchOutput.isEmpty {
+                        accumulatedOutput += batchOutput
+                        Task { @MainActor [batchOutput] in
+                            self.output += batchOutput
                         }
                     }
-
+                    
                     if let completion = batch.compactMap({ $0.info }).first {
+                        let statsString = String(format: "%.1f tokens/s", completion.tokensPerSecond)
                         Task { @MainActor in
-                            self.stat = String(format: "%.1f tokens/s", completion.tokensPerSecond)
+                            self.stat = statsString
+                            self.finalStats = statsString
                         }
+                        
+                        // Log the complete interaction
+                        await self.logCompleteInteraction(
+                            prompt: prompt,
+                            response: accumulatedOutput,
+                            completion: completion
+                        )
                     }
                 }
             }
-
+            
         } catch {
-            output = "Failed: \(error)"
+            let errorMessage = "Failed: \(error)"
+            output = errorMessage
+            
+            // Log the error as well
+            TeacherLogger.shared.logInteraction(
+                userPrompt: prompt,
+                modelResponse: errorMessage,
+                modelInfo: "Bundled Phi-3.5-mini (offline)", // ← Fixed
+		tokensPerSecond: 0.0,
+		promptTokens: 0,
+		responseTokens: 0,
+                processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
+            )
         }
     }
+    
+    private func logCompleteInteraction(
+	prompt: String, 
+	response: String, 
+	completion: GenerateCompletionInfo
+    ) {
+	let processingTime = Date().timeIntervalSince(generationStartTime ?? Date())
 
+	TeacherLogger.shared.logInteraction(
+	    userPrompt: prompt,
+	    modelResponse: response,
+	    modelInfo: "Bundled Phi-3.5-mini (offline)",
+	    tokensPerSecond: completion.tokensPerSecond,
+	    promptTokens: completion.promptTokenCount,
+	    responseTokens: completion.generationTokenCount,
+	    processingTime: processingTime
+	)
+    }
+    
     func generate() {
         guard !running else { return }
         let currentPrompt = prompt
@@ -309,8 +377,21 @@ class LLMEvaluator {
             running = false
         }
     }
-
+    
     func cancelGeneration() {
+        // Log cancellation
+        if !currentPrompt.isEmpty {
+            TeacherLogger.shared.logInteraction(
+                userPrompt: currentPrompt,
+                modelResponse: "[GENERATION CANCELLED]",
+                modelInfo: modelConfiguration.name,
+		tokensPerSecond: 0.0,
+		promptTokens: 0,
+		responseTokens: 0,
+                processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
+            )
+        }
+        
         generationTask?.cancel()
         running = false
     }
