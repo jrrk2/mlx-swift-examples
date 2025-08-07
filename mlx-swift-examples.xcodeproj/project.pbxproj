@@ -16,6 +16,10 @@
 		0F5AD8012DB70E6300745C06 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = C32A17FE2CFFB98A0092A5B6 /* MLXVLM */; };
 		12305EAF2B9D864400C92FEE /* PredictionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12305EAE2B9D864400C92FEE /* PredictionView.swift */; };
 		81695B412BA373D300F260D8 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 81695B402BA373D300F260D8 /* MarkdownUI */; };
+		AB5A5AA32E44D7F8003CC75C /* TeacherPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB5A5AA22E44D7F8003CC75C /* TeacherPreferences.swift */; };
+		AB5A5AA42E44D7F8003CC75C /* Colours.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB5A5A9F2E44D7F8003CC75C /* Colours.swift */; };
+		AB5A5AA52E44D7F8003CC75C /* TeacherAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB5A5AA02E44D7F8003CC75C /* TeacherAuthManager.swift */; };
+		AB5A5AA62E44D7F8003CC75C /* TeacherLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB5A5AA12E44D7F8003CC75C /* TeacherLogger.swift */; };
 		AB81A7632DF0612100B0DF80 /* DeviceStat.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB81A7622DF0612100B0DF80 /* DeviceStat.swift */; };
 		AB81A8F42DF197DE00B0DF80 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB81A8F32DF197DE00B0DF80 /* Assets.xcassets */; };
 		C3056BAE2BCD97B700A31D04 /* LoRATrainingExampleApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3056BAD2BCD97B700A31D04 /* LoRATrainingExampleApp.swift */; };
@@ -200,6 +204,10 @@
 		0AC74F282D1376F1003C90A7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		0F5AD7412DB70C0300745C06 /* MLXChatExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MLXChatExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		12305EAE2B9D864400C92FEE /* PredictionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PredictionView.swift; sourceTree = "<group>"; };
+		AB5A5A9F2E44D7F8003CC75C /* Colours.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colours.swift; sourceTree = "<group>"; };
+		AB5A5AA02E44D7F8003CC75C /* TeacherAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherAuthManager.swift; sourceTree = "<group>"; };
+		AB5A5AA12E44D7F8003CC75C /* TeacherLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherLogger.swift; sourceTree = "<group>"; };
+		AB5A5AA22E44D7F8003CC75C /* TeacherPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherPreferences.swift; sourceTree = "<group>"; };
 		AB81A7622DF0612100B0DF80 /* DeviceStat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStat.swift; sourceTree = "<group>"; };
 		AB81A8F32DF197DE00B0DF80 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C3056BA12BCD973400A31D04 /* test.jsonl */ = {isa = PBXFileReference; lastKnownFileType = text; path = test.jsonl; sourceTree = "<group>"; };
@@ -629,6 +637,10 @@
 		C3A8B3EB2B92A2A90002EFB8 /* LLMEval */ = {
 			isa = PBXGroup;
 			children = (
+				AB5A5A9F2E44D7F8003CC75C /* Colours.swift */,
+				AB5A5AA02E44D7F8003CC75C /* TeacherAuthManager.swift */,
+				AB5A5AA12E44D7F8003CC75C /* TeacherLogger.swift */,
+				AB5A5AA22E44D7F8003CC75C /* TeacherPreferences.swift */,
 				819BEFF72BAF8B4E0002CCEE /* ViewModels */,
 				C3A8B3F22B92A2A90002EFB8 /* ContentView.swift */,
 				C3A8B3ED2B92A2A90002EFB8 /* LLMEvalApp.swift */,
@@ -1169,6 +1181,10 @@
 			files = (
 				C3A8B3F42B92A2A90002EFB8 /* LLMEvalApp.swift in Sources */,
 				AB81A7632DF0612100B0DF80 /* DeviceStat.swift in Sources */,
+				AB5A5AA32E44D7F8003CC75C /* TeacherPreferences.swift in Sources */,
+				AB5A5AA42E44D7F8003CC75C /* Colours.swift in Sources */,
+				AB5A5AA52E44D7F8003CC75C /* TeacherAuthManager.swift in Sources */,
+				AB5A5AA62E44D7F8003CC75C /* TeacherLogger.swift in Sources */,
 				C3A8B3F72B92A2A90002EFB8 /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
