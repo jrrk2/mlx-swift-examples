@@ -10,6 +10,7 @@ import Metal
 import SwiftUI
 import Tokenizers
 import Hub
+// Replace your ContentView with this version that makes the Teacher button more visible
 
 struct ContentView: View {
     @Environment(DeviceStat.self) private var deviceStat
@@ -24,6 +25,36 @@ struct ContentView: View {
 
     var body: some View {
         VStack(alignment: .leading) {
+            // Add teacher access button at the top - MORE VISIBLE
+            HStack {
+                Button {
+                    teacherAuth.requestAccess()
+                } label: {
+                    HStack {
+                        Image(systemName: "person.badge.key.fill")
+                        Text("Teacher Logs")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .foregroundColor(.blue)
+                .help("Access student interaction logs (teacher only)")
+                
+                Spacer()
+                
+                // Status indicator
+                if teacherAuth.isAuthenticated {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Teacher Authenticated")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+            
             VStack {
                 HStack {
                     Text(llm.modelInfo)
@@ -103,35 +134,13 @@ struct ContentView: View {
                 .disabled(llm.output == "")
                 .labelStyle(.titleAndIcon)
             }
-            
-            // Teacher logs toolbar item - FIXED for cross-platform
-            #if os(iOS)
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    teacherAuth.requestAccess()
-                } label: {
-                    Label("Teacher Logs", systemImage: "person.badge.key")
-                }
-                .help("Access student interaction logs (teacher only)")
-            }
-            #else
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    teacherAuth.requestAccess()
-                } label: {
-                    Label("Teacher Logs", systemImage: "person.badge.key")
-                }
-                .help("Access student interaction logs (teacher only)")
-            }
-            #endif
-
         }
         // Sheet modifiers for teacher authentication
         .sheet(isPresented: $teacherAuth.showingPasswordPrompt) {
             TeacherPasswordView(authManager: teacherAuth)
         }
         .sheet(isPresented: $teacherAuth.isAuthenticated) {
-            AuthenticatedTeacherLogView(authManager: teacherAuth)
+            SimpleTeacherLogView(authManager: teacherAuth)
                 .onDisappear {
                     teacherAuth.logout()
                 }
