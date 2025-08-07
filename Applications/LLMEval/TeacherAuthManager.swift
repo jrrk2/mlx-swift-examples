@@ -311,11 +311,11 @@ struct ConversationCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(isCancelled ? (isPartialResponse ? Color.orange : Color.red) : Color(.separator), lineWidth: isCancelled ? 2 : 1)
+                .stroke(isCancelled ? (isPartialResponse ? Color.orange : Color.red) : Color.myseparator, lineWidth: isCancelled ? 2 : 1)
         )
     }
 }

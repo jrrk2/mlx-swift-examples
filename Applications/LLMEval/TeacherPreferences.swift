@@ -8,7 +8,41 @@
 
 import SwiftUI
 import Foundation
+// import Colours
 
+extension Color {
+    static var mysystemBackground: Color {
+        #if os(iOS)
+        return Color(.systemBackground)
+        #elseif os(macOS)
+        return Color(nsColor: .windowBackgroundColor)
+        #endif
+    }
+
+    static var mysecondarySystemBackground: Color {
+        #if os(iOS)
+        return Color(.secondarySystemBackground)
+        #elseif os(macOS)
+        return Color(nsColor: .controlBackgroundColor)
+        #endif
+    }
+
+    static var mysystemGray6: Color {
+        #if os(iOS)
+        return Color(.systemGray6)
+        #elseif os(macOS)
+        return Color(nsColor: .textBackgroundColor)
+        #endif
+    }
+
+    static var myseparator: Color {
+        #if os(iOS)
+        return Color(.separator)
+        #elseif os(macOS)
+        return Color(nsColor: .separatorColor)
+        #endif
+    }
+}
 // MARK: - Teacher Preferences Manager
 
 // Add these missing pieces to your TeacherPreferences class:
@@ -136,7 +170,7 @@ struct TeacherPreferencesView: View {
             )
         }
         .frame(width: 600, height: 700)
-        .background(Color(.systemBackground))
+        .background(Color.mysystemBackground)
         .alert("Reset Settings", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Reset", role: .destructive) {
@@ -196,7 +230,7 @@ struct PreferencesHeader: View {
             .buttonStyle(.borderedProminent)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
     }
 }
 
@@ -264,7 +298,7 @@ struct ClassInfoSection: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(8)
     }
 }
@@ -315,7 +349,7 @@ struct AgeRangeSection: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(8)
     }
 }
@@ -364,7 +398,7 @@ struct DefaultPromptSection: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(8)
     }
 }
@@ -386,11 +420,11 @@ struct SystemMessageSection: View {
                 TextEditor(text: $preferences.systemMessage)
                     .frame(height: 100)
                     .padding(4)
-                    .background(Color(.systemGray6))
+                    .background(Color.mysystemGray6)
                     .cornerRadius(6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(.separator), lineWidth: 1)
+                            .stroke(Color.myseparator, lineWidth: 1)
                     )
                 
                 Text("This tells the AI how to behave with students.")
@@ -399,7 +433,7 @@ struct SystemMessageSection: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(8)
     }
 }
@@ -430,7 +464,7 @@ struct QuickActionsSection: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(8)
     }
 }
@@ -463,7 +497,7 @@ struct PreviewSection: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.mysecondarySystemBackground)
         .cornerRadius(8)
     }
 }
