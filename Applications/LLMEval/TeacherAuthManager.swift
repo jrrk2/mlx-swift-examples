@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Simplified, Crash-Free Log Viewer
+// MARK: - Fixed Log Viewer with Proper List Display
 
 struct SimpleTeacherLogView: View {
     @ObservedObject var authManager: TeacherAuthManager
@@ -8,8 +8,8 @@ struct SimpleTeacherLogView: View {
     @State private var isLoading = true
     
     var body: some View {
-        VStack {
-            // Simple header
+        VStack(spacing: 0) {
+            // Header
             HStack {
                 Text("Student Conversations")
                     .font(.title2)
@@ -21,6 +21,11 @@ struct SimpleTeacherLogView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
+                Button("Refresh") {
+                    loadLogs()
+                }
+                .buttonStyle(.bordered)
+                
                 Button("Close") {
                     authManager.logout()
                 }
@@ -30,17 +35,19 @@ struct SimpleTeacherLogView: View {
             
             Divider()
             
-            // Content
+            // Main content area
             if isLoading {
+                Spacer()
                 VStack {
                     ProgressView()
                     Text("Loading conversations...")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .frame(maxHeight: .infinity)
+                Spacer()
                 
             } else if logEntries.isEmpty {
+                Spacer()
                 VStack(spacing: 20) {
                     Image(systemName: "bubble.left.and.bubble.right")
                         .font(.system(size: 40))
@@ -58,32 +65,44 @@ struct SimpleTeacherLogView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                .frame(maxHeight: .infinity)
+                Spacer()
                 
             } else {
-                // Simple list of conversations
-                List {
-                    ForEach(Array(logEntries.enumerated()), id: \.offset) { index, entry in
-                        ConversationRow(entry: entry, index: index + 1)
+                // Conversations list - FIXED
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(Array(logEntries.enumerated()), id: \.offset) { index, entry in
+                            ConversationCard(entry: entry, index: index + 1)
+                                .padding(.horizontal)
+                        }
                     }
+                    .padding(.vertical)
                 }
             }
         }
+        .frame(minWidth: 600, minHeight: 400)
         .onAppear {
+            print("🔍 SimpleTeacherLogView appeared")
             loadLogs()
         }
     }
     
     private func loadLogs() {
+        print("🔍 Loading logs...")
+        isLoading = true
+        
         Task {
             do {
                 let entries = try TeacherLogger.shared.getAllLogEntries()
+                print("🔍 Found \(entries.count) log entries")
+                
                 await MainActor.run {
                     self.logEntries = entries.sorted { $0.timestamp > $1.timestamp }
                     self.isLoading = false
+                    print("🔍 Loaded \(self.logEntries.count) entries into UI")
                 }
             } catch {
-                print("Error loading logs: \(error)")
+                print("❌ Error loading logs: \(error)")
                 await MainActor.run {
                     self.logEntries = []
                     self.isLoading = false
@@ -93,7 +112,7 @@ struct SimpleTeacherLogView: View {
     }
     
     private func createTestEntries() {
-        print("Creating test entries...")
+        print("🔍 Creating test entries...")
         
         TeacherLogger.shared.logInteraction(
             userPrompt: "What is 5 + 5?",
@@ -115,20 +134,20 @@ struct SimpleTeacherLogView: View {
             processingTime: 1.5
         )
         
-        // Reload logs
+        print("✅ Test entries created, reloading...")
         loadLogs()
     }
 }
 
-// MARK: - Simple Conversation Row
+// MARK: - Conversation Card (Better Layout)
 
-struct ConversationRow: View {
+struct ConversationCard: View {
     let entry: TeacherLogger.LogEntry
     let index: Int
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with conversation number and time
             HStack {
                 Text("Conversation #\(index)")
                     .font(.headline)
@@ -136,41 +155,75 @@ struct ConversationRow: View {
                 
                 Spacer()
                 
-                Text(entry.timestamp.formatted(date: .omitted, time: .shortened))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(Int(entry.generationStats.tokensPerSecond)) tok/s")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
             }
             
             // Student info
+            Text("Student: \(entry.userId)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.bottom, 4)
+            
+            // Question section
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Question:")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.green)
+                
+                Text(entry.userPrompt)
+                    .font(.body)
+                    .padding(8)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(6)
+            }
+            
+            // Answer section
+            VStack(alignment: .leading, spacing: 4) {
+                Text("AI Response:")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.blue)
+                
+                Text(entry.modelResponse)
+                    .font(.body)
+                    .padding(8)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
+            }
+            
+            // Stats footer
             HStack {
-                Text("Student: \(entry.userId)")
+                Text("Processing: \(String(format: "%.1f", entry.generationStats.processingTime))s")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 Spacer()
                 
-                Text("\(Int(entry.generationStats.tokensPerSecond)) tokens/sec")
+                Text("Tokens: \(entry.generationStats.promptTokens) → \(entry.generationStats.responseTokens)")
                     .font(.caption)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.secondary)
             }
-            
-            // Question
-            Text("Q: \(entry.userPrompt)")
-                .font(.body)
-                .foregroundColor(.green)
-                .padding(.vertical, 2)
-            
-            // Answer
-            Text("A: \(entry.modelResponse)")
-                .font(.body)
-                .foregroundColor(.blue)
-                .padding(.bottom, 4)
         }
-        .padding(.vertical, 4)
+        .padding()
+        .background(Color(.controlBackgroundColor))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(.separatorColor), lineWidth: 1)
+        )
     }
 }
 
-// MARK: - Ultra Simple Password View (to avoid crashes)
+// MARK: - Keep the Simple Password View
 
 struct TeacherPasswordView: View {
     @ObservedObject var authManager: TeacherAuthManager
