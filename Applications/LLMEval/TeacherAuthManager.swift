@@ -6,6 +6,7 @@ struct SimpleTeacherLogView: View {
     @ObservedObject var authManager: TeacherAuthManager
     @State private var logEntries: [TeacherLogger.LogEntry] = []
     @State private var isLoading = true
+    @State private var showingSettings = false  // ← Add this
     
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +22,12 @@ struct SimpleTeacherLogView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Button("Refresh") {
+                Button("Settings") {         // ← Add Settings button
+                    showingSettings = true
+                }
+                .buttonStyle(.bordered)
+
+		Button("Refresh") {
                     loadLogs()
                 }
                 .buttonStyle(.bordered)
@@ -81,6 +87,9 @@ struct SimpleTeacherLogView: View {
             }
         }
         .frame(minWidth: 600, minHeight: 400)
+        .sheet(isPresented: $showingSettings) {     // ← Add Settings sheet
+            TeacherPreferencesView()
+        }
         .onAppear {
             print("🔍 SimpleTeacherLogView appeared")
             loadLogs()
