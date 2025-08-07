@@ -82,132 +82,279 @@ class TeacherPreferences: ObservableObject {
 
 // MARK: - Teacher Preferences View
 
+import SwiftUI
+
+// MARK: - Fixed Teacher Preferences View with Better Layout
+
 struct TeacherPreferencesView: View {
     @ObservedObject var preferences = TeacherPreferences.shared
     @State private var selectedAgePreset = "8-9 year olds (Grade 2-3)"
     @State private var customAgeRange = ""
+    @State private var selectedPromptPreset = "What would you like to learn about today?"
+    @State private var customPrompt = ""
     @State private var showingResetAlert = false
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section("Class Information") {
-                    TextField("Teacher Name (Optional)", text: $preferences.teacherName)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    TextField("School Name (Optional)", text: $preferences.schoolName)
-                        .textFieldStyle(.roundedBorder)
-                }
+        VStack(spacing: 0) {
+            // Fixed header
+            HStack {
+                Text("Teacher Settings")
+                    .font(.title2)
+                    .fontWeight(.semibold)
                 
-                Section("Student Age Range") {
-                    Picker("Age Group", selection: $selectedAgePreset) {
-                        ForEach(TeacherPreferences.agePresets, id: \.self) { preset in
-                            Text(preset).tag(preset)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: selectedAgePreset) { _, newValue in
-                        if newValue != "Custom Age Range" {
-                            preferences.studentAgeRange = newValue
-                            preferences.updateSystemMessageFromAge()
-                        }
-                    }
+                Spacer()
+                
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding()
+            .background(Color(.controlBackgroundColor))
+            
+            Divider()
+            
+            // Scrollable content with fixed width
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
                     
-                    if selectedAgePreset == "Custom Age Range" {
-                        TextField("Enter custom age range (e.g., 6-7 year olds)", text: $customAgeRange)
-                            .textFieldStyle(.roundedBorder)
-                            .onChange(of: customAgeRange) { _, newValue in
-                                if !newValue.isEmpty {
+                    // Class Information Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Class Information")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Teacher Name:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            TextField("Enter your name (optional)", text: $preferences.teacherName)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: .infinity)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("School Name:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            TextField("Enter school name (optional)", text: $preferences.schoolName)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
+                    
+                    // Age Range Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Student Age Range")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Select age group:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Picker("Age Group", selection: $selectedAgePreset) {
+                                ForEach(TeacherPreferences.agePresets, id: \.self) { preset in
+                                    Text(preset).tag(preset)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .onChange(of: selectedAgePreset) { _, newValue in
+                                if newValue != "Custom Age Range" {
                                     preferences.studentAgeRange = newValue
                                     preferences.updateSystemMessageFromAge()
                                 }
                             }
+                            
+                            if selectedAgePreset == "Custom Age Range" {
+                                TextField("Enter custom age range (e.g., 6-7 year olds)", text: $customAgeRange)
+                                    .textFieldStyle(.roundedBorder)
+                                    .onChange(of: customAgeRange) { _, newValue in
+                                        if !newValue.isEmpty {
+                                            preferences.studentAgeRange = newValue
+                                            preferences.updateSystemMessageFromAge()
+                                        }
+                                    }
+                            }
+                            
+                            Text("Current: **\(preferences.studentAgeRange)**")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
+                        }
                     }
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
                     
-                    Text("Current: \(preferences.studentAgeRange)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Section("AI Assistant Instructions") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("System Message:")
+                    // Default Prompt Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Default Startup Question")
                             .font(.headline)
+                            .foregroundColor(.primary)
                         
-                        TextEditor(text: $preferences.systemMessage)
-                            .frame(minHeight: 100)
-                            .padding(4)
-                            .background(Color(.controlBackgroundColor))
-                            .cornerRadius(6)
-                        
-                        Text("This message tells the AI how to behave when talking to your students.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Choose what students see when they start:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Picker("Prompt Preset", selection: $selectedPromptPreset) {
+                                ForEach(TeacherPreferences.promptPresets, id: \.self) { preset in
+                                    Text(preset).tag(preset)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .onChange(of: selectedPromptPreset) { _, newValue in
+                                if newValue != "Custom Question" {
+                                    preferences.defaultPrompt = newValue
+                                }
+                            }
+                            
+                            if selectedPromptPreset == "Custom Question" {
+                                TextField("Enter custom startup question", text: $customPrompt)
+                                    .textFieldStyle(.roundedBorder)
+                                    .onChange(of: customPrompt) { _, newValue in
+                                        if !newValue.isEmpty {
+                                            preferences.defaultPrompt = newValue
+                                        }
+                                    }
+                            }
+                            
+                            Text("Current: **\"\(preferences.defaultPrompt)\"**")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
+                        }
                     }
-                }
-                
-                Section("Quick Actions") {
-                    Button("Auto-Generate from Age Range") {
-                        preferences.updateSystemMessageFromAge()
-                    }
-                    .buttonStyle(.bordered)
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
                     
-                    Button("Reset to Defaults") {
-                        showingResetAlert = true
-                    }
-                    .buttonStyle(.bordered)
-                    .foregroundColor(.red)
-                }
-                
-                Section("Preview") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("When students ask questions, the AI will receive:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    // AI Instructions Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("AI Assistant Instructions")
+                            .font(.headline)
+                            .foregroundColor(.primary)
                         
-                        Text("System: \"\(preferences.systemMessage)\"")
-                            .font(.caption)
-                            .padding(8)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(6)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("System Message:")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            TextEditor(text: $preferences.systemMessage)
+                                .frame(height: 120)
+                                .padding(8)
+                                .background(Color(.textBackgroundColor))
+                                .cornerRadius(6)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color(.separatorColor), lineWidth: 1)
+                                )
+                            
+                            Text("This tells the AI how to behave when talking to your students.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
+                    
+                    // Quick Actions Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Quick Actions")
+                            .font(.headline)
+                            .foregroundColor(.primary)
                         
-                        Text("User: \"[Student's question]\"")
-                            .font(.caption)
-                            .padding(8)
-                            .background(Color.green.opacity(0.1))
-                            .cornerRadius(6)
+                        HStack(spacing: 12) {
+                            Button("Auto-Generate from Age") {
+                                preferences.updateSystemMessageFromAge()
+                            }
+                            .buttonStyle(.bordered)
+                            
+                            Button("Reset All Settings") {
+                                showingResetAlert = true
+                            }
+                            .buttonStyle(.bordered)
+                            .foregroundColor(.red)
+                            
+                            Spacer()
+                        }
                     }
-                }
-            }
-            .navigationTitle("Teacher Settings")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Done") {
-                        dismiss()
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
+                    
+                    // Preview Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Preview")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("When students ask questions, the AI will receive:")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("System: \"\(preferences.systemMessage)\"")
+                                    .font(.caption)
+                                    .padding(8)
+                                    .background(Color.blue.opacity(0.1))
+                                    .cornerRadius(6)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                Text("User: \"\(preferences.defaultPrompt)\"")
+                                    .font(.caption)
+                                    .padding(8)
+                                    .background(Color.green.opacity(0.1))
+                                    .cornerRadius(6)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .padding()
+                    .background(Color(.controlBackgroundColor))
+                    .cornerRadius(8)
                 }
+                .padding()
             }
         }
-        .frame(minWidth: 500, minHeight: 600)
+        .frame(width: 600, height: 700)
+        .background(Color(.windowBackgroundColor))
         .alert("Reset Settings", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Reset", role: .destructive) {
                 preferences.resetToDefaults()
                 selectedAgePreset = "8-9 year olds (Grade 2-3)"
                 customAgeRange = ""
+                selectedPromptPreset = "What would you like to learn about today?"
+                customPrompt = ""
             }
         } message: {
             Text("This will reset all teacher preferences to default values.")
         }
         .onAppear {
-            // Set initial picker selection based on current preference
+            // Set initial picker selections based on current preferences
             if TeacherPreferences.agePresets.contains(preferences.studentAgeRange) {
                 selectedAgePreset = preferences.studentAgeRange
             } else {
                 selectedAgePreset = "Custom Age Range"
                 customAgeRange = preferences.studentAgeRange
+            }
+            
+            if TeacherPreferences.promptPresets.contains(preferences.defaultPrompt) {
+                selectedPromptPreset = preferences.defaultPrompt
+            } else {
+                selectedPromptPreset = "Custom Question"
+                customPrompt = preferences.defaultPrompt
             }
         }
     }
