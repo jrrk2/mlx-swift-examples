@@ -136,7 +136,7 @@ struct TeacherPreferencesView: View {
             )
         }
         .frame(width: 600, height: 700)
-        .background(Color(.windowBackgroundColor))
+        .background(Color(.systemBackground))
         .alert("Reset Settings", isPresented: $showingResetAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Reset", role: .destructive) {
@@ -196,7 +196,7 @@ struct PreferencesHeader: View {
             .buttonStyle(.borderedProminent)
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
     }
 }
 
@@ -264,7 +264,7 @@ struct ClassInfoSection: View {
             }
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(8)
     }
 }
@@ -315,7 +315,7 @@ struct AgeRangeSection: View {
             }
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(8)
     }
 }
@@ -364,7 +364,7 @@ struct DefaultPromptSection: View {
             }
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(8)
     }
 }
@@ -386,11 +386,11 @@ struct SystemMessageSection: View {
                 TextEditor(text: $preferences.systemMessage)
                     .frame(height: 100)
                     .padding(4)
-                    .background(Color(.textBackgroundColor))
+                    .background(Color(.systemGray6))
                     .cornerRadius(6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(.separatorColor), lineWidth: 1)
+                            .stroke(Color(.separator), lineWidth: 1)
                     )
                 
                 Text("This tells the AI how to behave with students.")
@@ -399,7 +399,7 @@ struct SystemMessageSection: View {
             }
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(8)
     }
 }
@@ -430,7 +430,7 @@ struct QuickActionsSection: View {
             }
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(8)
     }
 }
@@ -463,7 +463,7 @@ struct PreviewSection: View {
             }
         }
         .padding()
-        .background(Color(.controlBackgroundColor))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(8)
     }
 }
