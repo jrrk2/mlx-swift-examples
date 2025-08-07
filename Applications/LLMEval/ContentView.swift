@@ -169,8 +169,7 @@ struct ContentView: View {
     }
 }
 
-
-// MARK: - Enhanced LLMEvaluator with Logging
+// Fixed LLMEvaluator with proper MainActor isolation
 
 @Observable
 @MainActor
@@ -194,10 +193,12 @@ class LLMEvaluatorWithLogging {
     
     var generationTask: Task<Void, Error>?
     
-    // Logging-related properties
+    // Enhanced logging-related properties
     private var currentPrompt = ""
     private var generationStartTime: Date?
     private var finalStats: String = ""
+    private var accumulatedResponse = "" // Track partial responses
+    private var lastCompletionInfo: GenerateCompletionInfo?
     
     // Load state management
     enum LoadState {
@@ -207,12 +208,10 @@ class LLMEvaluatorWithLogging {
     var loadState = LoadState.idle
     
     init() {
-        // Initialize a new logging session when the evaluator starts
         TeacherLogger.shared.startNewSession()
     }
     
     func setupBundledModel() throws -> URL {
-        // Create destination directory
         let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let modelDir = documentsDir
             .appendingPathComponent("Models")
@@ -223,25 +222,13 @@ class LLMEvaluatorWithLogging {
             return modelDir
         }
         
-        // Create the model directory
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
         
-        // Copy the flattened files from bundle
         let filesToCopy = [
-            "added_tokens.json",
-            "chat_template.jinja",
-            "config.json",
-            "configuration_phi3.py",
-            "generation_config.json",
-            "model.safetensors",
-            "model.safetensors.index.json",
-            "modeling_phi3.py",
-            "README.md",
-            "sample_finetune.py",
-            "special_tokens_map.json",
-            "tokenizer_config.json",
-            "tokenizer.json",
-            "tokenizer.model",
+            "added_tokens.json", "chat_template.jinja", "config.json", "configuration_phi3.py",
+            "generation_config.json", "model.safetensors", "model.safetensors.index.json",
+            "modeling_phi3.py", "README.md", "sample_finetune.py", "special_tokens_map.json",
+            "tokenizer_config.json", "tokenizer.json", "tokenizer.model",
         ]
         
         for filename in filesToCopy {
@@ -252,7 +239,6 @@ class LLMEvaluatorWithLogging {
             
             let destinationFile = modelDir.appendingPathComponent(filename)
             
-            // Remove if exists (in case of re-copying)
             if FileManager.default.fileExists(atPath: destinationFile.path) {
                 try FileManager.default.removeItem(at: destinationFile)
             }
@@ -268,10 +254,8 @@ class LLMEvaluatorWithLogging {
     func load() async throws -> ModelContainer {
         switch loadState {
         case .idle:
-            // Set up bundled model first
             let modelDir = try setupBundledModel()
             
-            // Use ModelConfiguration(directory:) to point directly to the bundled model
             let bundledModelConfig = ModelConfiguration(
                 directory: modelDir,
                 defaultPrompt: "History of Hong Kong"
@@ -299,12 +283,29 @@ class LLMEvaluatorWithLogging {
         }
     }
     
-    private func generate(prompt: String) async {
-        // Store the original prompt for logging
+    // MainActor isolated methods for updating state
+    @MainActor
+    private func updateAccumulatedResponse(_ newContent: String) {
+        accumulatedResponse += newContent
+    }
+    
+    @MainActor
+    private func updateLastCompletionInfo(_ completion: GenerateCompletionInfo) {
+        lastCompletionInfo = completion
+    }
+    
+    @MainActor
+    private func resetGenerationState(prompt: String) {
         currentPrompt = prompt
         generationStartTime = Date()
+        accumulatedResponse = ""
+        lastCompletionInfo = nil
+    }
+    
+    private func generate(prompt: String) async {
+        // Reset and initialize logging state
+        await resetGenerationState(prompt: prompt)
         
-        // Clear previous output but store it for potential logging
         let previousOutput = output
         output = ""
         
@@ -324,30 +325,32 @@ class LLMEvaluatorWithLogging {
                 let stream = try MLXLMCommon.generate(
                     input: lmInput, parameters: generateParameters, context: context)
                 
-                var accumulatedOutput = ""
-                
                 for await batch in stream._throttle(
                     for: updateInterval, reducing: Generation.collect)
                 {
                     let batchOutput = batch.compactMap { $0.chunk }.joined(separator: "")
                     if !batchOutput.isEmpty {
-                        accumulatedOutput += batchOutput
+                        // Update accumulated response on MainActor
+                        await self.updateAccumulatedResponse(batchOutput)
+                        
                         Task { @MainActor [batchOutput] in
                             self.output += batchOutput
                         }
                     }
                     
+                    // Update completion info for potential cancellation logging
                     if let completion = batch.compactMap({ $0.info }).first {
+                        await self.updateLastCompletionInfo(completion)
+                        
                         let statsString = String(format: "%.1f tokens/s", completion.tokensPerSecond)
                         Task { @MainActor in
                             self.stat = statsString
                             self.finalStats = statsString
                         }
                         
-                        // Log the complete interaction
-                        await self.logCompleteInteraction(
+                        // Log the complete interaction (only when fully complete)
+                        await self.logCompleteInteractionAsync(
                             prompt: prompt,
-                            response: accumulatedOutput,
                             completion: completion
                         )
                     }
@@ -356,19 +359,43 @@ class LLMEvaluatorWithLogging {
             
         } catch {
             let errorMessage = "Failed: \(error)"
-            output = errorMessage
+            await MainActor.run {
+                self.output = errorMessage
+            }
             
-            // Log the error as well
-            TeacherLogger.shared.logInteraction(
-                userPrompt: prompt,
-                modelResponse: errorMessage,
-                modelInfo: "Bundled Phi-3.5-mini (offline)",
-                tokensPerSecond: 0.0,
-                promptTokens: 0,
-                responseTokens: 0,
-                processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
-            )
+            // Log the error, including any partial response
+            await self.logErrorAsync(prompt: prompt, error: error)
         }
+    }
+    
+    @MainActor
+    private func logCompleteInteractionAsync(prompt: String, completion: GenerateCompletionInfo) {
+        let processingTime = Date().timeIntervalSince(generationStartTime ?? Date())
+
+        TeacherLogger.shared.logInteraction(
+            userPrompt: prompt,
+            modelResponse: accumulatedResponse,
+            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            tokensPerSecond: completion.tokensPerSecond,
+            promptTokens: completion.promptTokenCount,
+            responseTokens: completion.generationTokenCount,
+            processingTime: processingTime
+        )
+    }
+    
+    @MainActor
+    private func logErrorAsync(prompt: String, error: Error) {
+        let responseToLog = accumulatedResponse.isEmpty ? "Failed: \(error)" : accumulatedResponse + "\n\n[Error: \(error)]"
+        
+        TeacherLogger.shared.logInteraction(
+            userPrompt: prompt,
+            modelResponse: responseToLog,
+            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            tokensPerSecond: lastCompletionInfo?.tokensPerSecond ?? 0.0,
+            promptTokens: lastCompletionInfo?.promptTokenCount ?? 0,
+            responseTokens: lastCompletionInfo?.generationTokenCount ?? 0,
+            processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
+        )
     }
     
     private func logCompleteInteraction(
@@ -401,20 +428,55 @@ class LLMEvaluatorWithLogging {
     }
     
     func cancelGeneration() {
-        // Log cancellation
+        print("🔍 Cancelling generation. Accumulated response so far: '\(accumulatedResponse)'")
+        
+        // Log cancellation with the partial conversation
         if !currentPrompt.isEmpty {
+            let responseToLog: String
+            let statusPrefix: String
+            
+            if accumulatedResponse.isEmpty {
+                // No response generated yet
+                responseToLog = "[GENERATION CANCELLED - No response generated]"
+                statusPrefix = "[CANCELLED]"
+            } else {
+                // Partial response available
+                responseToLog = accumulatedResponse + "\n\n[GENERATION CANCELLED - Response incomplete]"
+                statusPrefix = "[PARTIAL]"
+            }
+            
             TeacherLogger.shared.logInteraction(
                 userPrompt: currentPrompt,
-                modelResponse: "[GENERATION CANCELLED]",
+                modelResponse: responseToLog,
                 modelInfo: "Bundled Phi-3.5-mini (offline)",
-                tokensPerSecond: 0.0,
-                promptTokens: 0,
-                responseTokens: 0,
+                tokensPerSecond: lastCompletionInfo?.tokensPerSecond ?? 0.0,
+                promptTokens: lastCompletionInfo?.promptTokenCount ?? 0,
+                responseTokens: lastCompletionInfo?.generationTokenCount ?? 0,
                 processingTime: Date().timeIntervalSince(generationStartTime ?? Date())
             )
+            
+            print("✅ Logged cancelled conversation with partial response")
         }
         
         generationTask?.cancel()
         running = false
+    }
+    
+    // Test logging function
+    func testLogging() {
+        print("🔍 Manual test logging called...")
+        
+        TeacherLogger.shared.logInteraction(
+            userPrompt: "Manual test: What's the weather like?",
+            modelResponse: "I don't have access to real-time weather data, but I can help you understand weather patterns!",
+            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            tokensPerSecond: 35.2,
+            promptTokens: 7,
+            responseTokens: 18,
+            processingTime: 2.3
+        )
+        
+        print("✅ Manual test log entry created!")
+        print("📁 Log file location: \(TeacherLogger.shared.getLogFileURL().path)")
     }
 }

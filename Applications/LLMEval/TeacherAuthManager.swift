@@ -140,18 +140,71 @@ struct SimpleTeacherLogView: View {
 }
 
 // MARK: - Conversation Card (Better Layout)
+// Enhanced Conversation Card that handles cancelled conversations better
 
 struct ConversationCard: View {
     let entry: TeacherLogger.LogEntry
     let index: Int
     
+    // Detect if this is a cancelled conversation
+    private var isCancelled: Bool {
+        entry.modelResponse.contains("[GENERATION CANCELLED") || 
+        entry.modelResponse.contains("[CANCELLED]") ||
+        entry.modelResponse.contains("[PARTIAL]")
+    }
+    
+    private var isPartialResponse: Bool {
+        entry.modelResponse.contains("[PARTIAL]") || 
+        (entry.modelResponse.contains("[GENERATION CANCELLED") && !entry.modelResponse.contains("No response generated"))
+    }
+    
+    private var cleanedResponse: String {
+        // Remove the cancellation markers for display
+        var cleaned = entry.modelResponse
+        cleaned = cleaned.replacingOccurrences(of: "\n\n[GENERATION CANCELLED - Response incomplete]", with: "")
+        cleaned = cleaned.replacingOccurrences(of: "\n\n[GENERATION CANCELLED - No response generated]", with: "")
+        cleaned = cleaned.replacingOccurrences(of: "[GENERATION CANCELLED - No response generated]", with: "No response was generated before cancellation.")
+        return cleaned
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with conversation number and time
+            // Header with conversation number, time, and status
             HStack {
-                Text("Conversation #\(index)")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                HStack(spacing: 8) {
+                    Text("Conversation #\(index)")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    // Status indicator for cancelled conversations
+                    if isCancelled {
+                        HStack(spacing: 4) {
+                            Image(systemName: isPartialResponse ? "pause.circle.fill" : "stop.circle.fill")
+                                .foregroundColor(isPartialResponse ? .orange : .red)
+                            Text(isPartialResponse ? "PARTIAL" : "CANCELLED")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(isPartialResponse ? .orange : .red)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background((isPartialResponse ? Color.orange : Color.red).opacity(0.1))
+                        .cornerRadius(4)
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("COMPLETE")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.green)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(4)
+                    }
+                }
                 
                 Spacer()
                 
@@ -160,9 +213,11 @@ struct ConversationCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text("\(Int(entry.generationStats.tokensPerSecond)) tok/s")
-                        .font(.caption)
-                        .foregroundColor(.blue)
+                    if entry.generationStats.tokensPerSecond > 0 {
+                        Text("\(Int(entry.generationStats.tokensPerSecond)) tok/s")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
                 }
             }
             
@@ -186,25 +241,58 @@ struct ConversationCard: View {
                     .cornerRadius(6)
             }
             
-            // Answer section
+            // Answer section with different styling for cancelled/partial
             VStack(alignment: .leading, spacing: 4) {
-                Text("AI Response:")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.blue)
+                HStack {
+                    Text("AI Response:")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                    
+                    if isCancelled {
+                        Text(isPartialResponse ? "(Interrupted)" : "(Not Generated)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .italic()
+                    }
+                }
                 
-                Text(entry.modelResponse)
-                    .font(.body)
-                    .padding(8)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(6)
+                if cleanedResponse.isEmpty || cleanedResponse.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // No response case
+                    Text("No response was generated before the conversation was cancelled.")
+                        .font(.body)
+                        .italic()
+                        .foregroundColor(.secondary)
+                        .padding(8)
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(6)
+                } else {
+                    // Response available (complete or partial)
+                    Text(cleanedResponse)
+                        .font(.body)
+                        .padding(8)
+                        .background(isCancelled ? Color.orange.opacity(0.1) : Color.blue.opacity(0.1))
+                        .cornerRadius(6)
+                }
             }
             
-            // Stats footer
+            // Stats footer with enhanced info for cancelled conversations
             HStack {
-                Text("Processing: \(String(format: "%.1f", entry.generationStats.processingTime))s")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Processing: \(String(format: "%.1f", entry.generationStats.processingTime))s")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if isCancelled && !isPartialResponse {
+                        Text("Cancelled before response generation")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    } else if isCancelled && isPartialResponse {
+                        Text("Response interrupted mid-generation")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
                 
                 Spacer()
                 
@@ -218,7 +306,7 @@ struct ConversationCard: View {
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.separatorColor), lineWidth: 1)
+                .stroke(isCancelled ? (isPartialResponse ? Color.orange : Color.red) : Color(.separatorColor), lineWidth: isCancelled ? 2 : 1)
         )
     }
 }
