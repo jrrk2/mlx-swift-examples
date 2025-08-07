@@ -169,7 +169,7 @@ struct ContentView: View {
     }
 }
 
-// Fixed LLMEvaluator with proper MainActor isolation
+// Updated LLMEvaluator that uses teacher preferences
 
 @Observable
 @MainActor
@@ -197,10 +197,12 @@ class LLMEvaluatorWithLogging {
     private var currentPrompt = ""
     private var generationStartTime: Date?
     private var finalStats: String = ""
-    private var accumulatedResponse = "" // Track partial responses
+    private var accumulatedResponse = ""
     private var lastCompletionInfo: GenerateCompletionInfo?
     
-    // Load state management
+    // Reference to teacher preferences
+    private let teacherPreferences = TeacherPreferences.shared
+    
     enum LoadState {
         case idle
         case loaded(ModelContainer)
@@ -209,7 +211,10 @@ class LLMEvaluatorWithLogging {
     
     init() {
         TeacherLogger.shared.startNewSession()
+        print("🔧 LLMEvaluator initialized with system message: \(teacherPreferences.systemMessage)")
     }
+    
+    // ... (keeping all the existing setupBundledModel and load methods the same) ...
     
     func setupBundledModel() throws -> URL {
         let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -303,14 +308,17 @@ class LLMEvaluatorWithLogging {
     }
     
     private func generate(prompt: String) async {
-        // Reset and initialize logging state
         await resetGenerationState(prompt: prompt)
         
         let previousOutput = output
         output = ""
         
+        // Use the teacher's custom system message
+        let systemMessage = teacherPreferences.systemMessage
+        print("🔧 Using system message: \(systemMessage)")
+        
         let chat: [Chat.Message] = [
-            .system("You are an age appropriate assistant for 8-9 year olds"),
+            .system(systemMessage),  // ← Now uses teacher preference!
             .user(prompt),
         ]
         let userInput = UserInput(chat: chat)
@@ -330,7 +338,6 @@ class LLMEvaluatorWithLogging {
                 {
                     let batchOutput = batch.compactMap { $0.chunk }.joined(separator: "")
                     if !batchOutput.isEmpty {
-                        // Update accumulated response on MainActor
                         await self.updateAccumulatedResponse(batchOutput)
                         
                         Task { @MainActor [batchOutput] in
@@ -338,7 +345,6 @@ class LLMEvaluatorWithLogging {
                         }
                     }
                     
-                    // Update completion info for potential cancellation logging
                     if let completion = batch.compactMap({ $0.info }).first {
                         await self.updateLastCompletionInfo(completion)
                         
@@ -348,7 +354,6 @@ class LLMEvaluatorWithLogging {
                             self.finalStats = statsString
                         }
                         
-                        // Log the complete interaction (only when fully complete)
                         await self.logCompleteInteractionAsync(
                             prompt: prompt,
                             completion: completion
@@ -363,7 +368,6 @@ class LLMEvaluatorWithLogging {
                 self.output = errorMessage
             }
             
-            // Log the error, including any partial response
             await self.logErrorAsync(prompt: prompt, error: error)
         }
     }
@@ -371,11 +375,14 @@ class LLMEvaluatorWithLogging {
     @MainActor
     private func logCompleteInteractionAsync(prompt: String, completion: GenerateCompletionInfo) {
         let processingTime = Date().timeIntervalSince(generationStartTime ?? Date())
+        
+        // Include teacher info in the model info for logs
+        let modelInfo = buildModelInfoForLogs()
 
         TeacherLogger.shared.logInteraction(
             userPrompt: prompt,
             modelResponse: accumulatedResponse,
-            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            modelInfo: modelInfo,
             tokensPerSecond: completion.tokensPerSecond,
             promptTokens: completion.promptTokenCount,
             responseTokens: completion.generationTokenCount,
@@ -386,11 +393,12 @@ class LLMEvaluatorWithLogging {
     @MainActor
     private func logErrorAsync(prompt: String, error: Error) {
         let responseToLog = accumulatedResponse.isEmpty ? "Failed: \(error)" : accumulatedResponse + "\n\n[Error: \(error)]"
+        let modelInfo = buildModelInfoForLogs()
         
         TeacherLogger.shared.logInteraction(
             userPrompt: prompt,
             modelResponse: responseToLog,
-            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            modelInfo: modelInfo,
             tokensPerSecond: lastCompletionInfo?.tokensPerSecond ?? 0.0,
             promptTokens: lastCompletionInfo?.promptTokenCount ?? 0,
             responseTokens: lastCompletionInfo?.generationTokenCount ?? 0,
@@ -398,22 +406,20 @@ class LLMEvaluatorWithLogging {
         )
     }
     
-    private func logCompleteInteraction(
-        prompt: String, 
-        response: String, 
-        completion: GenerateCompletionInfo
-    ) {
-        let processingTime = Date().timeIntervalSince(generationStartTime ?? Date())
-
-        TeacherLogger.shared.logInteraction(
-            userPrompt: prompt,
-            modelResponse: response,
-            modelInfo: "Bundled Phi-3.5-mini (offline)",
-            tokensPerSecond: completion.tokensPerSecond,
-            promptTokens: completion.promptTokenCount,
-            responseTokens: completion.generationTokenCount,
-            processingTime: processingTime
-        )
+    private func buildModelInfoForLogs() -> String {
+        var info = "Phi-3.5-mini (offline)"
+        
+        if !teacherPreferences.teacherName.isEmpty {
+            info += " | Teacher: \(teacherPreferences.teacherName)"
+        }
+        
+        if !teacherPreferences.schoolName.isEmpty {
+            info += " | \(teacherPreferences.schoolName)"
+        }
+        
+        info += " | \(teacherPreferences.studentAgeRange)"
+        
+        return info
     }
     
     func generate() {
@@ -430,25 +436,21 @@ class LLMEvaluatorWithLogging {
     func cancelGeneration() {
         print("🔍 Cancelling generation. Accumulated response so far: '\(accumulatedResponse)'")
         
-        // Log cancellation with the partial conversation
         if !currentPrompt.isEmpty {
             let responseToLog: String
-            let statusPrefix: String
             
             if accumulatedResponse.isEmpty {
-                // No response generated yet
                 responseToLog = "[GENERATION CANCELLED - No response generated]"
-                statusPrefix = "[CANCELLED]"
             } else {
-                // Partial response available
                 responseToLog = accumulatedResponse + "\n\n[GENERATION CANCELLED - Response incomplete]"
-                statusPrefix = "[PARTIAL]"
             }
+            
+            let modelInfo = buildModelInfoForLogs()
             
             TeacherLogger.shared.logInteraction(
                 userPrompt: currentPrompt,
                 modelResponse: responseToLog,
-                modelInfo: "Bundled Phi-3.5-mini (offline)",
+                modelInfo: modelInfo,
                 tokensPerSecond: lastCompletionInfo?.tokensPerSecond ?? 0.0,
                 promptTokens: lastCompletionInfo?.promptTokenCount ?? 0,
                 responseTokens: lastCompletionInfo?.generationTokenCount ?? 0,
@@ -462,14 +464,13 @@ class LLMEvaluatorWithLogging {
         running = false
     }
     
-    // Test logging function
     func testLogging() {
         print("🔍 Manual test logging called...")
         
         TeacherLogger.shared.logInteraction(
             userPrompt: "Manual test: What's the weather like?",
             modelResponse: "I don't have access to real-time weather data, but I can help you understand weather patterns!",
-            modelInfo: "Bundled Phi-3.5-mini (offline)",
+            modelInfo: buildModelInfoForLogs(),
             tokensPerSecond: 35.2,
             promptTokens: 7,
             responseTokens: 18,

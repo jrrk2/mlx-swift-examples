@@ -15,6 +15,7 @@
 		AB81A8F42DF197DE00B0DF80 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB81A8F32DF197DE00B0DF80 /* Assets.xcassets */; };
 		ABDBE3822E43BD6E003DC664 /* TeacherLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDBE3812E43BD6E003DC664 /* TeacherLogger.swift */; };
 		ABDBE3842E43CFC4003DC664 /* TeacherAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDBE3832E43CFC4003DC664 /* TeacherAuthManager.swift */; };
+		ABDBE3862E447563003DC664 /* TeacherPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDBE3852E447563003DC664 /* TeacherPreferences.swift */; };
 		C3056BBA2BCD981900A31D04 /* train.jsonl in Resources */ = {isa = PBXBuildFile; fileRef = C3056BA22BCD973400A31D04 /* train.jsonl */; };
 		C3056BBB2BCD981900A31D04 /* test.jsonl in Resources */ = {isa = PBXBuildFile; fileRef = C3056BA12BCD973400A31D04 /* test.jsonl */; };
 		C3056BBC2BCD981900A31D04 /* valid.jsonl in Resources */ = {isa = PBXBuildFile; fileRef = C3056BA32BCD973400A31D04 /* valid.jsonl */; };
@@ -182,6 +183,7 @@
 		AB81A8F32DF197DE00B0DF80 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		ABDBE3812E43BD6E003DC664 /* TeacherLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherLogger.swift; sourceTree = "<group>"; };
 		ABDBE3832E43CFC4003DC664 /* TeacherAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherAuthManager.swift; sourceTree = "<group>"; };
+		ABDBE3852E447563003DC664 /* TeacherPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeacherPreferences.swift; sourceTree = "<group>"; };
 		C3056BA12BCD973400A31D04 /* test.jsonl */ = {isa = PBXFileReference; lastKnownFileType = text; path = test.jsonl; sourceTree = "<group>"; };
 		C3056BA22BCD973400A31D04 /* train.jsonl */ = {isa = PBXFileReference; lastKnownFileType = text; path = train.jsonl; sourceTree = "<group>"; };
 		C3056BA32BCD973400A31D04 /* valid.jsonl */ = {isa = PBXFileReference; lastKnownFileType = text; path = valid.jsonl; sourceTree = "<group>"; };
@@ -498,6 +500,7 @@
 		C3A8B3EB2B92A2A90002EFB8 /* LLMEval */ = {
 			isa = PBXGroup;
 			children = (
+				ABDBE3852E447563003DC664 /* TeacherPreferences.swift */,
 				ABDBE3832E43CFC4003DC664 /* TeacherAuthManager.swift */,
 				ABDBE3812E43BD6E003DC664 /* TeacherLogger.swift */,
 				819BEFF72BAF8B4E0002CCEE /* ViewModels */,
@@ -1021,6 +1024,7 @@
 				C3A8B3F42B92A2A90002EFB8 /* LLMEvalApp.swift in Sources */,
 				ABDBE3842E43CFC4003DC664 /* TeacherAuthManager.swift in Sources */,
 				AB81A7632DF0612100B0DF80 /* DeviceStat.swift in Sources */,
+				ABDBE3862E447563003DC664 /* TeacherPreferences.swift in Sources */,
 				ABDBE3822E43BD6E003DC664 /* TeacherLogger.swift in Sources */,
 				C3A8B3F72B92A2A90002EFB8 /* ContentView.swift in Sources */,
 			);
