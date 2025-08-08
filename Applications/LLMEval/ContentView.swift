@@ -10,6 +10,8 @@ import Metal
 import SwiftUI
 import Tokenizers
 import Hub
+import MessageUI
+
 // Replace your ContentView with this version that makes the Teacher button more visible
 
 struct ContentView: View {
@@ -140,7 +142,7 @@ struct ContentView: View {
             TeacherPasswordView(authManager: teacherAuth)
         }
         .sheet(isPresented: $teacherAuth.isAuthenticated) {
-            SimpleTeacherLogView(authManager: teacherAuth)
+            SimpleTeacherLogViewWithExport(authManager: teacherAuth)
                 .onDisappear {
                     teacherAuth.logout()
                 }
