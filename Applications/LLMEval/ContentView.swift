@@ -265,7 +265,7 @@ class LLMEvaluatorWithLogging {
             
             let bundledModelConfig = ModelConfiguration(
                 directory: modelDir,
-                defaultPrompt: "History of Hong Kong"
+                defaultPrompt: "Help"
             )
             
             let modelContainer = try await LLMModelFactory.shared.loadContainer(

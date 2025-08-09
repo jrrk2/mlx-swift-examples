@@ -748,7 +748,7 @@ struct TeacherPasswordView: View {
                         .font(.caption)
                 }
                 
-                Text("(Hint: teacher123)")
+                Text("(Hint: ask teacher)")
                     .font(.caption)
                     .foregroundColor(.gray)
             }
